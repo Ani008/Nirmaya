@@ -10,8 +10,8 @@ import ApiKeyNotice from "../Components/ApiKeyNotice";
 import DemoPanel from "../Components/DemoPanel";
 import EmergencyAlert from "../Components/EmergencyAlert";
 import useRecorder from "../hooks/useRecorder";
-import toast from "react-hot-toast";
 import { sendVoice, getHealth } from "../lib/api";
+import { getDemoResponse } from "../lib/demoResponse";
 import { DEMO_LINK } from "../config";
 import { speak, stopSpeaking } from "../lib/speech";
 import {
@@ -24,6 +24,8 @@ import {
 const STORAGE_KEY = "nirmaya_lang";
 const STEP_DURATION_MS = 1600; // how long "Understanding…" stays before "Extracting information…"
 const MAP_PREP_MS = 1800; // "Preparing your hospital map…" pause before the slip appears
+const DEMO_LISTEN_MS = 2200; // demo mode: how long the "Listening…" orb shows
+const DEMO_THINK_MS = 3400; // demo mode: "Understanding…" + "Extracting information…" before the result
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -48,6 +50,7 @@ export default function Home() {
   const [emergency, setEmergency] = useState(null); // emergency message text, or null
   const [keyMissing, setKeyMissing] = useState(false); // backend has no Gemini API key
   const [mode, setMode] = useState("live"); // "live" | "demo" (demo only matters while keyMissing)
+  const [noticeCollapsed, setNoticeCollapsed] = useState(false); // notice shrinks to an icon after "Analyse"
   const { start, stop } = useRecorder();
   const scrollRef = useRef(null);
   const t = STRINGS[lang];
@@ -62,9 +65,11 @@ export default function Home() {
   }, [lang]);
 
   // Ask the backend once whether a Gemini key is set, to decide if the red notice is needed.
+  // No reachable backend at all (for example a frontend-only Vercel deploy) also means
+  // requests can't reach Gemini, so the demo option is offered in that case too.
   useEffect(() => {
     getHealth().then((health) => {
-      if (health && health.geminiKeySet === false) setKeyMissing(true);
+      if (!health || health.geminiKeySet === false) setKeyMissing(true);
     });
   }, []);
 
@@ -88,44 +93,48 @@ export default function Home() {
     addMessage({ from: "guide", kind: "text", text });
   }
 
+  // Renders a /api/voice style result (live from the backend, or the predefined demo one).
+  async function showResult(data, currentLang) {
+    if (data.status === "emergency") {
+      setEmergency(data.message);
+      speak(data.message, currentLang);
+    } else if (data.status === "ok") {
+      addMessage({ from: "user", kind: "text", text: data.transcript });
+      addMessage({
+        from: "guide",
+        kind: "summary",
+        summary: data.summary,
+        possibleCause: data.possibleCause,
+      });
+      speak([data.summary, data.possibleCause].filter(Boolean).join(" "), currentLang);
+
+      setStep(2); // "Preparing your hospital map…"
+      await sleep(MAP_PREP_MS);
+
+      const spokenSlip = `${data.slip.steps.join(" ")} ${data.disclaimer}`;
+      addMessage({
+        from: "guide",
+        kind: "slip",
+        slip: data.slip,
+        disclaimer: data.disclaimer,
+        spokenSlip,
+        lang: currentLang,
+      });
+      speak(spokenSlip, currentLang, true);
+    } else {
+      // "no_speech" or "unrelated": the backend sends the exact sentence to show
+      guideText(data.message);
+      speak(data.message, currentLang);
+    }
+  }
+
   // Sends the recording to the backend and shows whatever comes back.
   async function submit(blob, currentLang) {
     const text = STRINGS[currentLang];
     try {
       if (!blob || blob.size === 0) throw new Error("EMPTY_RECORDING");
       const data = await sendVoice(blob, currentLang);
-
-      if (data.status === "emergency") {
-        setEmergency(data.message);
-        speak(data.message, currentLang);
-      } else if (data.status === "ok") {
-        addMessage({ from: "user", kind: "text", text: data.transcript });
-        addMessage({
-          from: "guide",
-          kind: "summary",
-          summary: data.summary,
-          possibleCause: data.possibleCause,
-        });
-        speak([data.summary, data.possibleCause].filter(Boolean).join(" "), currentLang);
-
-        setStep(2); // "Preparing your hospital map…"
-        await sleep(MAP_PREP_MS);
-
-        const spokenSlip = `${data.slip.steps.join(" ")} ${data.disclaimer}`;
-        addMessage({
-          from: "guide",
-          kind: "slip",
-          slip: data.slip,
-          disclaimer: data.disclaimer,
-          spokenSlip,
-          lang: currentLang,
-        });
-        speak(spokenSlip, currentLang, true);
-      } else {
-        // "no_speech" or "unrelated": the backend sends the exact sentence to show
-        guideText(data.message);
-        speak(data.message, currentLang);
-      }
+      await showResult(data, currentLang);
     } catch (err) {
       console.error("Voice request failed:", err);
       if (err.code === "GEMINI_KEY_NOT_SET") {
@@ -164,9 +173,26 @@ export default function Home() {
     setEmergency(null);
   }
 
-  // UI only for now: the demo / upload analysis is connected in the next step.
-  function handleDemoAnalyse() {
-    toast(t.demoSoon);
+  // Demo mode (no Gemini key): nothing is sent to the server. We play the same
+  // "Listening…" -> "Understanding…" -> "Extracting information…" -> "Preparing your hospital map…"
+  // sequence as a live request, then show the predefined result from lib/demoResponse.js.
+  // The sample and any uploaded recording both get this same predefined answer.
+  async function handleDemoAnalyse() {
+    if (phase !== "idle") return;
+    const currentLang = lang;
+    setNoticeCollapsed(true);
+    stopSpeaking();
+    try {
+      setPhase("listening");
+      await sleep(DEMO_LISTEN_MS);
+      setStep(0);
+      setPhase("processing"); // the existing effect moves step 0 -> 1 after STEP_DURATION_MS
+      await sleep(DEMO_THINK_MS);
+      await showResult(getDemoResponse(currentLang), currentLang);
+    } finally {
+      setPhase("idle");
+      setStep(0);
+    }
   }
 
   const hasChat = messages.length > 0;
@@ -175,11 +201,14 @@ export default function Home() {
   return (
     <main className="mx-auto flex h-dvh w-full max-w-md flex-col px-5 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       {/* Top bar */}
-      <header className="flex h-11 shrink-0 items-center">
+      <header className="flex h-11 shrink-0 items-center justify-between">
         <MenuButton />
+        {keyMissing && noticeCollapsed && (
+          <ApiKeyNotice collapsed onExpand={() => setNoticeCollapsed(false)} strings={t} />
+        )}
       </header>
 
-      {keyMissing && (
+      {keyMissing && !noticeCollapsed && (
         <ApiKeyNotice
           mode={mode}
           onModeChange={setMode}
@@ -257,14 +286,14 @@ export default function Home() {
           label={t.languageGroup}
           disabled={phase !== "idle"}
         />
-        {demoActive ? (
+        {demoActive && phase === "idle" ? (
           <DemoPanel strings={t} onAnalyse={handleDemoAnalyse} />
         ) : (
           <VoiceButton
             status={phase}
             idleLabel={t.tapToSpeak}
             listeningLabel={t.listening}
-            onClick={handleVoiceClick}
+            onClick={demoActive ? undefined : handleVoiceClick}
           />
         )}
       </section>

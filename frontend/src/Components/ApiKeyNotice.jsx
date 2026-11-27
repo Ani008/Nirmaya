@@ -1,5 +1,6 @@
-// Red notice shown when the backend has no Gemini API key.
+// Amber notice shown when the backend has no Gemini API key.
 // Lets the visitor choose between the live app and a demo recording.
+// collapsed: shows only the warning icon (used once a demo analysis starts); tap it to expand.
 const MODES = ["live", "demo"];
 
 function WarningIcon() {
@@ -26,21 +27,37 @@ export default function ApiKeyNotice({
   disabled = false,
   demoLink,
   strings,
+  collapsed = false,
+  onExpand,
 }) {
   const labels = { live: strings.modeLive, demo: strings.modeDemo };
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={onExpand}
+        aria-label={strings.keyMissingTitle}
+        title={strings.keyMissingTitle}
+        className="animate-fadeIn flex h-11 w-11 items-center justify-center rounded-full border border-amber-400/30 bg-amber-500/10 text-amber-400 transition hover:bg-amber-500/20 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70"
+      >
+        <WarningIcon />
+      </button>
+    );
+  }
 
   return (
     <div
       role="alert"
-      className="mt-3 shrink-0 rounded-2xl border border-red-400/25 bg-red-500/10 p-3.5 text-left"
+      className="animate-fadeIn mt-3 shrink-0 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-3.5 text-left"
     >
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 text-red-400">
+        <span className="mt-0.5 text-amber-400">
           <WarningIcon />
         </span>
         <div>
-          <p className="text-sm font-semibold text-red-200">{strings.keyMissingTitle}</p>
-          <p className="mt-0.5 text-sm leading-snug text-red-100/70">{strings.keyMissingBody}</p>
+          <p className="text-sm font-semibold text-amber-200">{strings.keyMissingTitle}</p>
+          <p className="mt-0.5 text-sm leading-snug text-amber-100/70">{strings.keyMissingBody}</p>
         </div>
       </div>
 
@@ -64,10 +81,10 @@ export default function ApiKeyNotice({
               onClick={() => onModeChange(key)}
               className={[
                 "h-9 rounded-full px-3 text-sm font-semibold transition",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300/70",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70",
                 selected
                   ? "bg-white/15 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]"
-                  : "text-red-100/60 hover:text-red-50",
+                  : "text-amber-100/60 hover:text-amber-50",
               ].join(" ")}
             >
               {labels[key]}
@@ -80,7 +97,7 @@ export default function ApiKeyNotice({
         href={demoLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 inline-block text-sm font-medium text-red-100 underline decoration-red-300/40 underline-offset-4 transition hover:decoration-red-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300/70"
+        className="mt-3 inline-block text-sm font-medium text-amber-100 underline decoration-amber-300/40 underline-offset-4 transition hover:decoration-amber-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/70"
       >
         {strings.demoLink}
       </a>
