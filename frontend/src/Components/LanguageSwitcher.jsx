@@ -1,6 +1,6 @@
 import { LANGUAGES } from "../i18n/strings";
 
-// Three large buttons: मराठी / हिंदी / English. Works like a radio group.
+// Compact pill selector: मराठी / हिंदी / English. Works like a radio group.
 // `disabled` locks it while the patient is speaking or the slip is being prepared.
 export default function LanguageSwitcher({ value, onChange, label, disabled = false }) {
   return (
@@ -8,7 +8,8 @@ export default function LanguageSwitcher({ value, onChange, label, disabled = fa
       role="radiogroup"
       aria-label={label}
       className={[
-        "grid grid-cols-3 gap-3 transition-opacity",
+        "mx-auto grid w-fit grid-cols-3 gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1",
+        "transition-opacity",
         disabled ? "pointer-events-none opacity-40" : "",
       ].join(" ")}
     >
@@ -23,11 +24,11 @@ export default function LanguageSwitcher({ value, onChange, label, disabled = fa
             disabled={disabled}
             onClick={() => onChange(lang.code)}
             className={[
-              "h-14 rounded-2xl border-2 text-lg font-semibold transition",
-              "active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400",
+              "h-9 min-w-[4.5rem] rounded-full px-4 text-sm font-semibold transition",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70",
               selected
-                ? "border-emerald-400 bg-emerald-500/15 text-emerald-300"
-                : "border-white/15 bg-white/5 text-neutral-200 hover:bg-white/10",
+                ? "bg-emerald-500/20 text-emerald-200 shadow-[inset_0_0_0_1px_rgba(110,231,183,0.35)]"
+                : "text-neutral-400 hover:text-neutral-200",
             ].join(" ")}
           >
             {lang.label}

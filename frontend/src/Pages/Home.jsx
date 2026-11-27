@@ -1,14 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import Logo from "../Components/Logo";
+import MenuButton from "../Components/MenuButton";
 import LanguageSwitcher from "../Components/LanguageSwitcher";
 import VoiceButton from "../Components/VoiceButton";
-import SoundWave from "../Components/SoundWave";
 import ProcessingStatus from "../Components/ProcessingStatus";
 import ChatBubble from "../Components/ChatBubble";
 import SlipCard from "../Components/SlipCard";
+import ApiKeyNotice from "../Components/ApiKeyNotice";
+import DemoPanel from "../Components/DemoPanel";
 import EmergencyAlert from "../Components/EmergencyAlert";
 import useRecorder from "../hooks/useRecorder";
-import { sendVoice } from "../lib/api";
+import toast from "react-hot-toast";
+import { sendVoice, getHealth } from "../lib/api";
+import { DEMO_LINK } from "../config";
 import { speak, stopSpeaking } from "../lib/speech";
 import {
   LANGUAGES,
@@ -42,6 +46,8 @@ export default function Home() {
   const [step, setStep] = useState(0);
   const [messages, setMessages] = useState([]);
   const [emergency, setEmergency] = useState(null); // emergency message text, or null
+  const [keyMissing, setKeyMissing] = useState(false); // backend has no Gemini API key
+  const [mode, setMode] = useState("live"); // "live" | "demo" (demo only matters while keyMissing)
   const { start, stop } = useRecorder();
   const scrollRef = useRef(null);
   const t = STRINGS[lang];
@@ -54,6 +60,13 @@ export default function Home() {
     }
     document.documentElement.lang = lang;
   }, [lang]);
+
+  // Ask the backend once whether a Gemini key is set, to decide if the red notice is needed.
+  useEffect(() => {
+    getHealth().then((health) => {
+      if (health && health.geminiKeySet === false) setKeyMissing(true);
+    });
+  }, []);
 
   // While we wait for the server, move from "Understanding…" to "Extracting information…".
   useEffect(() => {
@@ -115,7 +128,10 @@ export default function Home() {
       }
     } catch (err) {
       console.error("Voice request failed:", err);
-      if (err.code === "GEMINI_KEY_NOT_SET") guideText(text.keyNotSet);
+      if (err.code === "GEMINI_KEY_NOT_SET") {
+        setKeyMissing(true);
+        guideText(text.keyNotSet);
+      }
       else if (err.code === "NETWORK") guideText(text.networkError);
       else guideText(text.serverError);
     } finally {
@@ -131,7 +147,9 @@ export default function Home() {
         await start();
         setPhase("listening");
       } catch (err) {
-        guideText(err.message === "RECORDING_UNSUPPORTED" ? t.micUnsupported : t.micDenied);
+        if (err.message === "INSECURE_CONTEXT") guideText(t.micInsecure);
+        else if (err.message === "RECORDING_UNSUPPORTED") guideText(t.micUnsupported);
+        else guideText(t.micDenied);
       }
     } else if (phase === "listening") {
       setStep(0);
@@ -146,10 +164,31 @@ export default function Home() {
     setEmergency(null);
   }
 
+  // UI only for now: the demo / upload analysis is connected in the next step.
+  function handleDemoAnalyse() {
+    toast(t.demoSoon);
+  }
+
   const hasChat = messages.length > 0;
+  const demoActive = keyMissing && mode === "demo";
 
   return (
     <main className="mx-auto flex h-dvh w-full max-w-md flex-col px-5 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      {/* Top bar */}
+      <header className="flex h-11 shrink-0 items-center">
+        <MenuButton />
+      </header>
+
+      {keyMissing && (
+        <ApiKeyNotice
+          mode={mode}
+          onModeChange={setMode}
+          disabled={phase !== "idle"}
+          demoLink={DEMO_LINK}
+          strings={t}
+        />
+      )}
+
       {/* Chat area */}
       <section
         ref={scrollRef}
@@ -167,10 +206,12 @@ export default function Home() {
               <Logo />
               {/* key makes the greeting fade in again whenever the language changes */}
               <div key={lang} className="animate-fadeIn mt-8 px-2">
-                <h1 className="text-3xl font-bold text-white">
+                <h1 className="text-3xl font-semibold tracking-tight text-white">
                   {t.greeting} {PLACEHOLDER_NAME[lang]}
                 </h1>
-                <p className="mt-3 text-lg leading-relaxed text-neutral-400">{t.prompt}</p>
+                <p className="mt-3 text-base leading-relaxed text-neutral-400">
+                  {demoActive ? t.demoPrompt : t.prompt}
+                </p>
               </div>
             </div>
           )}
@@ -204,30 +245,28 @@ export default function Home() {
             );
           })}
 
-          {phase === "listening" && (
-            <div className="animate-fadeIn w-full">
-              <SoundWave />
-            </div>
-          )}
-
           {phase === "processing" && <ProcessingStatus steps={t.steps} step={step} />}
         </div>
       </section>
 
       {/* Bottom controls */}
-      <section className="flex flex-col gap-4 pt-3">
+      <section className="flex flex-col items-center gap-6 pt-3">
         <LanguageSwitcher
           value={lang}
           onChange={setLang}
           label={t.languageGroup}
           disabled={phase !== "idle"}
         />
-        <VoiceButton
-          status={phase}
-          idleLabel={t.tapToSpeak}
-          listeningLabel={t.listening}
-          onClick={handleVoiceClick}
-        />
+        {demoActive ? (
+          <DemoPanel strings={t} onAnalyse={handleDemoAnalyse} />
+        ) : (
+          <VoiceButton
+            status={phase}
+            idleLabel={t.tapToSpeak}
+            listeningLabel={t.listening}
+            onClick={handleVoiceClick}
+          />
+        )}
       </section>
 
       {emergency && (

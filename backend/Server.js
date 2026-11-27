@@ -6,7 +6,8 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
-const { analyzeAudio, geminiConfigured, MODEL } = require("./services/gemini");
+const { analyzeAudio, checkGemini, geminiConfigured, MODEL } = require("./services/gemini");
+const log = require("./services/log");
 const { normalizeLang, message, buildSlip, hasEmergencyKeyword } = require("./services/rules");
 
 const app = express();
@@ -41,16 +42,6 @@ const upload = multer({
 // Anything smaller than this is a tap with no speech in it
 const MIN_AUDIO_BYTES = 2000;
 
-// The app must start and show its screen with no secret keys, so a missing key is
-// reported per request instead of crashing the server.
-function requireGeminiKey(_req, res, next) {
-  if (geminiConfigured()) return next();
-  return res.status(503).json({
-    error: "GEMINI_KEY_NOT_SET",
-    message: "Gemini API key not set. Add GEMINI_API_KEY to backend/.env and restart.",
-  });
-}
-
 app.get("/", (_req, res) => res.send("Nirmaya API is running"));
 
 app.get("/health", (_req, res) => {
@@ -58,30 +49,45 @@ app.get("/health", (_req, res) => {
 });
 
 // POST /voice  (multipart form: "audio" file + "lang" = mr | hi | en)
-app.post("/voice", requireGeminiKey, upload.single("audio"), async (req, res) => {
+// The upload runs first, so the recording is saved even when the Gemini key is missing.
+app.post("/voice", upload.single("audio"), async (req, res) => {
   const lang = normalizeLang(req.body && req.body.lang);
 
   if (!req.file) {
     return res.status(400).json({ error: "NO_AUDIO", message: "No audio file (field 'audio')." });
   }
 
-  const started = Date.now();
-  console.log(`Received ${req.file.mimetype}, ${(req.file.size / 1024).toFixed(0)} KB, lang=${lang}`);
+  log.title("New recording");
+  log.ok(`Saved ${req.file.filename} (${(req.file.size / 1024).toFixed(0)} KB, ${req.file.mimetype}, lang=${lang})`);
 
-  // 1. Silence or a tap with no speech
+  // 1. No Gemini key: the file is still saved in uploads/, the patient gets a clear message
+  if (!geminiConfigured()) {
+    log.fail("GEMINI_API_KEY is not set, so the audio was saved but not analysed.");
+    log.hint("Add GEMINI_API_KEY to backend/.env and restart the backend.");
+    return res.status(503).json({
+      error: "GEMINI_KEY_NOT_SET",
+      message: "Gemini API key not set. Add GEMINI_API_KEY to backend/.env and restart.",
+    });
+  }
+
+  // 2. Silence or a tap with no speech
   if (req.file.size < MIN_AUDIO_BYTES) {
+    log.warn(`Recording is only ${req.file.size} bytes. Too short to contain speech, not sent to Gemini.`);
     return res.json({ status: "no_speech", message: message("noSpeech", lang) });
   }
 
-  // 2. Ask Gemini to listen and extract structured details
+  // 3. Ask Gemini to listen and extract structured details
+  const started = Date.now();
   let data;
   try {
     data = await analyzeAudio({ filePath: req.file.path, mimeType: req.file.mimetype, lang });
   } catch (err) {
-    console.error("Gemini error:", err.message);
-    return res.status(502).json({ error: "GEMINI_ERROR", message: err.message });
+    const e = err.gemini || { code: "GEMINI_ERROR", problem: err.message, fix: "See the message above." };
+    log.fail(`Gemini failed [${e.code}]: ${e.problem}`);
+    log.hint(e.fix);
+    return res.status(502).json({ error: e.code, message: `${e.problem} ${e.fix}` });
   }
-  console.log(`Gemini done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+  log.ok(`Gemini answered in ${((Date.now() - started) / 1000).toFixed(1)}s`);
 
   const patient = {
     name: data.name ?? null,
@@ -91,16 +97,29 @@ app.post("/voice", requireGeminiKey, upload.single("audio"), async (req, res) =>
     duration: data.duration ?? null,
   };
 
-  // 3. Could not hear / not about health
+  log.detail("heard", `"${data.transcript || ""}"`);
+  log.detail("understood", data.intelligible ? "yes" : "no (silence or unclear)");
+  log.detail("health topic", data.relevant ? "yes" : "no");
+  log.detail("summary", data.summary || "-");
+  log.detail("possible", data.possibleCause || "-");
+  log.detail("symptoms", patient.symptoms.join(", ") || "-");
+  log.detail("department", data.department || "-");
+  log.detail("emergency", data.emergency ? "YES" : "no");
+
+  // 4. Could not hear / not about health
   if (!data.intelligible) {
+    log.warn("Gemini could not make out any words (silence or noise).");
     return res.json({ status: "no_speech", message: message("noSpeech", lang) });
   }
   if (!data.relevant) {
+    log.warn("Gemini heard you fine, but it is not a health problem, so the app shows the 'unrelated' message.");
+    log.warn("For a real test, say something like: \"I have had fever and body ache for two days\".");
     return res.json({ status: "unrelated", message: message("unrelated", lang) });
   }
 
-  // 4. Emergency: the model flag OR our own keyword check. Skip everything else.
+  // 5. Emergency: the model flag OR our own keyword check. Skip everything else.
   if (data.emergency || hasEmergencyKeyword(data.transcript, patient.symptoms.join(" "))) {
+    log.warn("EMERGENCY detected. The app will show the red alert.");
     return res.json({
       status: "emergency",
       message: message("emergency", lang),
@@ -109,7 +128,8 @@ app.post("/voice", requireGeminiKey, upload.single("audio"), async (req, res) =>
     });
   }
 
-  // 5. Normal case: roadmap comes from the rules file
+  // 6. Normal case: roadmap comes from the rules file
+  log.ok("Roadmap built. Sending result to the app.");
   return res.json({
     status: "ok",
     patient,
@@ -136,7 +156,9 @@ const PORT = process.env.PORT || 5000;
 // Only listen when run directly, so tests can import the app.
 if (require.main === module) {
   app.listen(PORT, () => {
-    console.log(`Nirmaya API on port ${PORT} (Gemini key ${geminiConfigured() ? "set" : "NOT set"}, model ${MODEL})`);
+    log.title("Nirmaya API");
+    log.ok(`Listening on port ${PORT} (model ${MODEL}, Gemini key ${geminiConfigured() ? "set" : "NOT set"})`);
+    checkGemini();
   });
 }
 

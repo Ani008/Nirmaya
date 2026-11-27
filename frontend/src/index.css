@@ -47,13 +47,13 @@ body {
   animation-iteration-count: infinite;
 }
 
-/* Soft ripple around the button while listening */
+/* Soft ripple around the record button while listening */
 @keyframes pulseRing {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
-  100% { box-shadow: 0 0 0 18px rgba(16, 185, 129, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.35), 0 0 0 0 rgba(52, 211, 153, 0.18); }
+  100% { box-shadow: 0 0 0 22px rgba(52, 211, 153, 0), 0 0 0 40px rgba(52, 211, 153, 0); }
 }
 .animate-pulse-ring {
-  animation: pulseRing 1.4s ease-out infinite;
+  animation: pulseRing 1.8s ease-out infinite;
 }
 
 /* Respect the phone's "reduce motion" setting: slow everything down */

@@ -29,7 +29,20 @@ export async function sendVoice(blob, lang) {
   }
 
   if (!response.ok) {
-    throw new ApiError(data?.error || "SERVER_ERROR", data?.message || "Server error");
+    // No JSON body means the request never reached our API (for example the backend is not running)
+    if (!data) throw new ApiError("NETWORK", "Could not reach the server.");
+    throw new ApiError(data.error || "SERVER_ERROR", data.message || "Server error");
   }
   return data;
+}
+
+// Asks the backend whether a Gemini key is set. Returns null when the backend cannot be reached.
+export async function getHealth() {
+  try {
+    const response = await fetch("/api/health");
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
 }

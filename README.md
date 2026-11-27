@@ -24,12 +24,26 @@ Open http://localhost:8080. The app starts without any secret keys. To enable vo
 understanding, copy `backend/.env.example` to `backend/.env`, set `GEMINI_API_KEY`, and
 restart. Without a key the app shows a "key not set" message when you try to speak.
 
+Docker starts two containers: the web app (nginx) and the API. Nothing needs to be configured.
+Every recording is saved as an audio file in `backend/uploads/`, even when no Gemini key is set.
+
+**On a phone:** browsers only allow the microphone on `https://` or `localhost`. Put the phone on the
+same Wi-Fi as the laptop and open `https://<laptop-ip>:8443`. The certificate is self-signed, so accept
+the browser warning once. Opening `http://<laptop-ip>:8080` on a phone shows a "needs a secure link"
+message instead of recording.
+
 ## Run without Docker
 
 ```
 cd backend && npm install && npm start        # API on http://localhost:5000
 cd frontend && npm install && npm run dev     # app on http://localhost:5173
 ```
+
+To test Gemini without the phone or UI: `cd backend && npm run test:gemini` (uses `test.ogg`), or
+`npm run test:gemini -- uploads/<your-recording>.webm`. The backend terminal prints each step and a
+plain-language fix if something fails.
+
+Run both, in two terminals. If the API is not running, the app shows "Could not reach the server".
 
 ## Demo notes
 

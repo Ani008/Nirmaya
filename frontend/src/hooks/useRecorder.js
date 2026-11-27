@@ -26,6 +26,11 @@ export default function useRecorder() {
   // Asks for microphone permission (first time only) and starts recording.
   // Throws if the permission is denied or the browser can't record.
   const start = useCallback(async () => {
+    // Browsers only expose the microphone on https:// or localhost. Opening the app from a
+    // phone through http://192.168.x.x hides navigator.mediaDevices completely.
+    if (!window.isSecureContext) {
+      throw new Error("INSECURE_CONTEXT");
+    }
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       throw new Error("RECORDING_UNSUPPORTED");
     }
