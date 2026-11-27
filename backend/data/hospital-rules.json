@@ -1,0 +1,115 @@
+{
+  "_note": "SAMPLE DATA for the demo. Edit this file to change counters, fees, OPD rooms, doctors and step wording. Gemini never writes these steps; it only picks a department id from this file.",
+
+  "hospital": {
+    "name": "Demo Government Hospital",
+    "caseFee": 50,
+    "counter": {
+      "en": "Registration Counter 1",
+      "mr": "नोंदणी काउंटर 1",
+      "hi": "पंजीकरण काउंटर 1"
+    },
+    "opdWord": { "en": "OPD", "mr": "ओपीडी", "hi": "ओपीडी" }
+  },
+
+  "steps": {
+    "en": [
+      "Go to {counter}. Carry any ID or an old hospital card.",
+      "Pay ₹{fee} and collect your case paper.",
+      "Go to {opd} and meet {doctor}.",
+      "Give your case paper and file to the doctor."
+    ],
+    "mr": [
+      "{counter} येथे जा. कोणतेही ओळखपत्र किंवा जुने हॉस्पिटल कार्ड सोबत घ्या.",
+      "₹{fee} भरा आणि तुमचा केस पेपर घ्या.",
+      "{opd} मध्ये जा आणि {doctor} यांना भेटा.",
+      "तुमचा केस पेपर आणि फाईल डॉक्टरांना द्या."
+    ],
+    "hi": [
+      "{counter} पर जाइए। कोई भी पहचान पत्र या पुराना अस्पताल कार्ड साथ रखिए।",
+      "₹{fee} जमा करें और अपना केस पेपर लीजिए।",
+      "{opd} में जाइए और {doctor} से मिलिए।",
+      "अपना केस पेपर और फाइल डॉक्टर को दीजिए।"
+    ]
+  },
+
+  "messages": {
+    "en": {
+      "noSpeech": "I could not hear you well. Please tap and speak again, closer to the phone.",
+      "unrelated": "I help with hospital visits. Please tell me how you feel.",
+      "emergency": "Go to the Emergency department now.",
+      "disclaimer": "This is a guide. The doctor will examine you."
+    },
+    "mr": {
+      "noSpeech": "मला तुमचे बोलणे नीट ऐकू आले नाही. कृपया पुन्हा टॅप करा आणि फोनच्या जवळ बोला.",
+      "unrelated": "मी हॉस्पिटल भेटीत मदत करतो. कृपया तुम्हाला कसे वाटते ते सांगा.",
+      "emergency": "आत्ताच आपत्कालीन विभागात जा.",
+      "disclaimer": "हे फक्त मार्गदर्शन आहे. डॉक्टर तुमची तपासणी करतील."
+    },
+    "hi": {
+      "noSpeech": "मुझे आपकी आवाज़ ठीक से सुनाई नहीं दी। कृपया फिर से टैप करें और फोन के पास बोलें।",
+      "unrelated": "मैं अस्पताल की यात्रा में मदद करता हूँ। कृपया बताइए आप कैसा महसूस कर रहे हैं।",
+      "emergency": "अभी आपातकालीन विभाग में जाइए।",
+      "disclaimer": "यह केवल एक मार्गदर्शन है। डॉक्टर आपकी जाँच करेंगे।"
+    }
+  },
+
+  "emergencyKeywords": [
+    "chest pain", "pain in my chest", "breathless", "trouble breathing", "difficulty breathing",
+    "can't breathe", "cannot breathe", "heavy bleeding", "bleeding a lot", "fainted", "fainting",
+    "unconscious", "seizure", "stroke", "face drooping", "slurred speech",
+    "सीने में दर्द", "छाती में दर्द", "सांस नहीं", "साँस नहीं", "सांस लेने में तकलीफ", "बेहोश", "दौरा पड़", "बहुत खून",
+    "छातीत दुखत", "छातीत दुखणे", "छातीत दुखतंय", "श्वास घेता येत नाही", "दम लागतो", "बेशुद्ध", "खूप रक्तस्राव", "खूप रक्त"
+  ],
+
+  "departments": {
+    "general_medicine": {
+      "hint": "fever, cold, cough, body ache, stomach pain, vomiting, loose motions, weakness, BP, sugar, headache",
+      "opd": 3,
+      "label": { "en": "General Medicine", "mr": "जनरल मेडिसिन", "hi": "जनरल मेडिसिन" },
+      "doctor": { "en": "Dr. Rutwik Patil", "mr": "डॉ. रुत्विक पाटील", "hi": "डॉ. रुत्विक पाटील" }
+    },
+    "pediatrics": {
+      "hint": "child or baby under 12 years with any problem",
+      "opd": 6,
+      "label": { "en": "Pediatrics", "mr": "बालरोग विभाग", "hi": "बाल रोग विभाग" },
+      "doctor": { "en": "Dr. Neha Joshi", "mr": "डॉ. नेहा जोशी", "hi": "डॉ. नेहा जोशी" }
+    },
+    "orthopedics": {
+      "hint": "bone, joint, back or knee pain, fracture, sprain, injury",
+      "opd": 5,
+      "label": { "en": "Orthopedics", "mr": "हाडांचा विभाग", "hi": "हड्डी रोग विभाग" },
+      "doctor": { "en": "Dr. Amit Deshmukh", "mr": "डॉ. अमित देशमुख", "hi": "डॉ. अमित देशमुख" }
+    },
+    "gynecology": {
+      "hint": "pregnancy, periods, women's health problems",
+      "opd": 8,
+      "label": { "en": "Gynecology", "mr": "स्त्रीरोग विभाग", "hi": "स्त्री रोग विभाग" },
+      "doctor": { "en": "Dr. Sunita Kulkarni", "mr": "डॉ. सुनीता कुलकर्णी", "hi": "डॉ. सुनीता कुलकर्णी" }
+    },
+    "ent": {
+      "hint": "ear pain, nose problem, throat pain, hearing problem",
+      "opd": 9,
+      "label": { "en": "ENT", "mr": "कान नाक घसा विभाग", "hi": "कान नाक गला विभाग" },
+      "doctor": { "en": "Dr. Prakash More", "mr": "डॉ. प्रकाश मोरे", "hi": "डॉ. प्रकाश मोरे" }
+    },
+    "eye": {
+      "hint": "eye pain, redness, blurred vision",
+      "opd": 10,
+      "label": { "en": "Eye", "mr": "नेत्ररोग विभाग", "hi": "नेत्र रोग विभाग" },
+      "doctor": { "en": "Dr. Meera Shah", "mr": "डॉ. मीरा शाह", "hi": "डॉ. मीरा शाह" }
+    },
+    "skin": {
+      "hint": "rash, itching, skin infection, hair or nail problem",
+      "opd": 11,
+      "label": { "en": "Skin", "mr": "त्वचारोग विभाग", "hi": "त्वचा रोग विभाग" },
+      "doctor": { "en": "Dr. Rahul Pawar", "mr": "डॉ. राहुल पवार", "hi": "डॉ. राहुल पवार" }
+    },
+    "dental": {
+      "hint": "toothache, gum problem, mouth ulcer",
+      "opd": 12,
+      "label": { "en": "Dental", "mr": "दंतरोग विभाग", "hi": "दंत रोग विभाग" },
+      "doctor": { "en": "Dr. Sneha Gadgil", "mr": "डॉ. स्नेहा गाडगीळ", "hi": "डॉ. स्नेहा गाडगीळ" }
+    }
+  }
+}

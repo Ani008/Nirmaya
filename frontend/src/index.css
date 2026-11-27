@@ -1,5 +1,22 @@
 @import "tailwindcss";
 
+/* Dark theme base. Devanagari font first so Marathi/Hindi render cleanly on basic phones. */
+html,
+body,
+#root {
+  height: 100%;
+  background-color: #0a0f0d;
+  color: #f5f5f5;
+}
+
+body {
+  margin: 0;
+  font-family: "Noto Sans", "Noto Sans Devanagari", system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -14,5 +31,33 @@
   to { opacity: 1; transform: scale(1); }
 }
 .animate-fadeIn {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Soundwave bars: each bar grows and shrinks from its centre.
+   Duration and delay are set per bar in SoundWave.jsx so they don't move in sync. */
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.15); }
+  50% { transform: scaleY(1); }
+}
+.wave-bar {
+  transform-origin: center;
+  animation-name: wave;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+
+/* Soft ripple around the button while listening */
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55); }
+  100% { box-shadow: 0 0 0 18px rgba(16, 185, 129, 0); }
+}
+.animate-pulse-ring {
+  animation: pulseRing 1.4s ease-out infinite;
+}
+
+/* Respect the phone's "reduce motion" setting: slow everything down */
+@media (prefers-reduced-motion: reduce) {
+  .wave-bar { animation-duration: 3s !important; }
+  .animate-pulse-ring { animation: none; }
 }

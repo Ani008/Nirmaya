@@ -1,0 +1,22 @@
+# Start everything with:  docker compose up --build
+# Then open http://localhost:8080
+#
+# No secret keys are needed to start. To enable voice understanding, create backend/.env
+# (copy backend/.env.example) and set GEMINI_API_KEY. Without it the app shows "key not set".
+services:
+  backend:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env
+        required: false
+    volumes:
+      - ./backend/uploads:/app/uploads
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

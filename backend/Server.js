@@ -1,122 +1,143 @@
-// require("dotenv").config();
-// const express = require("express");
-// const multer = require("multer");
-// const cors = require("cors");
-// const { GoogleGenAI } = require("@google/genai");
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const multer = require("multer");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
 
-// const app = express();
-// app.use(cors());
-// app.use(express.json());
+const { analyzeAudio, geminiConfigured, MODEL } = require("./services/gemini");
+const { normalizeLang, message, buildSlip, hasEmergencyKeyword } = require("./services/rules");
 
-// // audio is kept in memory (no files saved); 10 MB limit
-// const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const app = express();
+app.use(cors());
+app.use(express.json());
 
-// const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY, apiVersion: "v1beta" });
-// // Copy the current free Flash model name from Google AI Studio into .env
-// const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+// Demo setup: recordings are saved on disk in backend/uploads (git-ignored).
+// For real patients this should change to in-memory processing with no storage.
+const UPLOAD_DIR = path.join(__dirname, "uploads");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// const PROMPT = `You are a patient-intake assistant for a government hospital OPD in India.
-// The audio is a patient speaking in Marathi, Hindi, English or a mix.
-// Extract the details into JSON. Rules:
-// - Do NOT diagnose or give medical advice.
-// - name, age (number), gender, symptoms (array, in English), duration, severity ("mild"|"moderate"|"severe"), suggested_department (e.g. General Medicine, Pediatrics, Orthopedics, Gynecology, ENT, Eye, Skin, Emergency).
-// - Use null for anything not said. Do not guess.
-// - emergency = true only for chest pain, breathlessness, heavy bleeding, unconsciousness, seizure, or stroke signs.
-// - transcript: what the patient said, in the original language.
-// - english_summary: 1-2 sentences for the doctor.`;
+const EXTENSIONS = {
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+};
 
-// const SCHEMA = {
-//   type: "object",
-//   properties: {
-//     name: { type: "string", nullable: true },
-//     age: { type: "number", nullable: true },
-//     gender: { type: "string", nullable: true },
-//     symptoms: { type: "array", items: { type: "string" } },
-//     duration: { type: "string", nullable: true },
-//     severity: { type: "string", nullable: true },
-//     suggested_department: { type: "string", nullable: true },
-//     emergency: { type: "boolean" },
-//     transcript: { type: "string" },
-//     english_summary: { type: "string" },
-//   },
-//   required: ["symptoms", "emergency", "transcript", "english_summary"],
-// };
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: UPLOAD_DIR,
+    filename: (_req, file, cb) => {
+      const mime = (file.mimetype || "").split(";")[0];
+      const ext = EXTENSIONS[mime] || "webm";
+      cb(null, `${Date.now()}-${crypto.randomBytes(3).toString("hex")}.${ext}`);
+    },
+  }),
+  limits: { fileSize: 15 * 1024 * 1024 },
+});
 
-// app.get("/", (_req, res) => res.send("Voice intake API is running"));
+// Anything smaller than this is a tap with no speech in it
+const MIN_AUDIO_BYTES = 2000;
 
-// // POST /intake  (multipart form, field name: "audio")
-// app.post("/intake", upload.single("audio"), async (req, res) => {
-//   try {
-//     if (!req.file) return res.status(400).json({ error: "No audio file (field 'audio')" });
-
-//     // live progress in the terminal while Gemini works
-//     const t0 = Date.now();
-//     console.log(`\n📥 Received ${req.file.mimetype}, ${(req.file.size / 1024).toFixed(0)} KB. Sending to ${MODEL}...`);
-//     const spinner = setInterval(() => {
-//       process.stdout.write(`\r⏳ Processing... ${((Date.now() - t0) / 1000).toFixed(0)}s`);
-//     }, 500);
-
-//     let result;
-//     try {
-//       // give up after 45s instead of hanging forever
-//       result = await Promise.race([
-//         callGemini(req),
-//         new Promise((_, reject) =>
-//           setTimeout(() => reject(new Error("Timed out after 45s - Node can't reach Gemini (check internet/VPN/key/model)")), 45000)
-//         ),
-//       ]);
-//     } finally {
-//       clearInterval(spinner);
-//     }
-//     console.log(`\r✅ Done in ${((Date.now() - t0) / 1000).toFixed(1)}s            `);
-
-//     const data = JSON.parse(result.text);
-//     console.log(data);
-//     return res.json(data);
-//   } catch (err) {
-//     console.error("\n❌ Error:", err.message);
-//     res.status(500).json({ error: err.message });
-//   }
-// });
-
-// function callGemini(req) {
-//   return (async () => {
-//     const result = await ai.models.generateContent({
-//       model: MODEL,
-//       contents: [
-//         {
-//           role: "user",
-//           parts: [
-//             { inlineData: { mimeType: req.file.mimetype || "audio/mp4", data: req.file.buffer.toString("base64") } },
-//             { text: PROMPT },
-//           ],
-//         },
-//       ],
-//       config: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.1 },
-//     });
-//     return result;
-//   })();
-// }
-
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => console.log(`Listening on ${PORT}`));
-
-
-const url = "https://example.com/api/health";
-
-async function checkApi() {
-  try {
-    const response = await fetch(url);
-
-    if (response.ok) {
-      console.log("API is UP, status:", response.status);
-    } else {
-      console.log("API has a problem, status:", response.status);
-    }
-  } catch (error) {
-    console.log("API is DOWN:", error.message);
-  }
+// The app must start and show its screen with no secret keys, so a missing key is
+// reported per request instead of crashing the server.
+function requireGeminiKey(_req, res, next) {
+  if (geminiConfigured()) return next();
+  return res.status(503).json({
+    error: "GEMINI_KEY_NOT_SET",
+    message: "Gemini API key not set. Add GEMINI_API_KEY to backend/.env and restart.",
+  });
 }
 
-checkApi();
-setInterval(checkApi, 30000);
+app.get("/", (_req, res) => res.send("Nirmaya API is running"));
+
+app.get("/health", (_req, res) => {
+  res.json({ ok: true, geminiKeySet: geminiConfigured(), model: MODEL });
+});
+
+// POST /voice  (multipart form: "audio" file + "lang" = mr | hi | en)
+app.post("/voice", requireGeminiKey, upload.single("audio"), async (req, res) => {
+  const lang = normalizeLang(req.body && req.body.lang);
+
+  if (!req.file) {
+    return res.status(400).json({ error: "NO_AUDIO", message: "No audio file (field 'audio')." });
+  }
+
+  const started = Date.now();
+  console.log(`Received ${req.file.mimetype}, ${(req.file.size / 1024).toFixed(0)} KB, lang=${lang}`);
+
+  // 1. Silence or a tap with no speech
+  if (req.file.size < MIN_AUDIO_BYTES) {
+    return res.json({ status: "no_speech", message: message("noSpeech", lang) });
+  }
+
+  // 2. Ask Gemini to listen and extract structured details
+  let data;
+  try {
+    data = await analyzeAudio({ filePath: req.file.path, mimeType: req.file.mimetype, lang });
+  } catch (err) {
+    console.error("Gemini error:", err.message);
+    return res.status(502).json({ error: "GEMINI_ERROR", message: err.message });
+  }
+  console.log(`Gemini done in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+
+  const patient = {
+    name: data.name ?? null,
+    age: data.age ?? null,
+    gender: data.gender ?? null,
+    symptoms: data.symptoms || [],
+    duration: data.duration ?? null,
+  };
+
+  // 3. Could not hear / not about health
+  if (!data.intelligible) {
+    return res.json({ status: "no_speech", message: message("noSpeech", lang) });
+  }
+  if (!data.relevant) {
+    return res.json({ status: "unrelated", message: message("unrelated", lang) });
+  }
+
+  // 4. Emergency: the model flag OR our own keyword check. Skip everything else.
+  if (data.emergency || hasEmergencyKeyword(data.transcript, patient.symptoms.join(" "))) {
+    return res.json({
+      status: "emergency",
+      message: message("emergency", lang),
+      patient,
+      transcript: data.transcript,
+    });
+  }
+
+  // 5. Normal case: roadmap comes from the rules file
+  return res.json({
+    status: "ok",
+    patient,
+    transcript: data.transcript,
+    summary: data.summary,
+    possibleCause: data.possibleCause || null,
+    disclaimer: message("disclaimer", lang),
+    slip: buildSlip(data.department, lang),
+  });
+});
+
+// Express 5 error handler (for example: file too large)
+app.use((err, _req, res, _next) => {
+  console.error("Request error:", err.message);
+  const tooLarge = err.code === "LIMIT_FILE_SIZE";
+  res.status(tooLarge ? 413 : 500).json({
+    error: tooLarge ? "AUDIO_TOO_LARGE" : "SERVER_ERROR",
+    message: err.message,
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+
+// Only listen when run directly, so tests can import the app.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Nirmaya API on port ${PORT} (Gemini key ${geminiConfigured() ? "set" : "NOT set"}, model ${MODEL})`);
+  });
+}
+
+module.exports = app;
