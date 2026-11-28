@@ -10,7 +10,7 @@
 // The slip mirrors backend/data/hospital-rules.json (General Medicine, OPD 3).
 // If you change that file, update the values below too.
 
-const CASE_FEE = 50;
+const CASE_FEE = 20;
 
 const DEMO_RESPONSES = {
   hi: {
@@ -63,10 +63,11 @@ const DEMO_RESPONSES = {
       doctor: "Dr. Rutwik Patil",
       counter: "Registration Counter 1",
       steps: [
-        "Go to Registration Counter 1. Carry any ID or an old hospital card.",
-        `Pay ₹${CASE_FEE} and collect your case paper.`,
-        "Go to OPD 3 and meet Dr. Rutwik Patil.",
-        "Give your case paper and file to the doctor.",
+      "Please proceed to counter No. 3 and stand in the queue to collect your case paper.",
+      `Show your hospital card or file at counter No. 3. Pay the registration fee ₹${CASE_FEE} in cash and collect your case paper.`,
+      "Proceed to OPD 3, Room/Department No. 2, Building A.",
+      "Submit your hospital file to the OPD staff or attendant and wait for your token number to be called.",
+      "Meet Dr. Aditya Sharma when your number is called. Explain your symptoms and share any relevant medical history."
       ],
     },
   },

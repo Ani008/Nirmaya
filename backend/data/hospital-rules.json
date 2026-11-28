@@ -3,33 +3,36 @@
 
   "hospital": {
     "name": "Demo Government Hospital",
-    "caseFee": 50,
+    "caseFee": 20,
     "counter": {
-      "en": "Registration Counter 1",
-      "mr": "नोंदणी काउंटर 1",
-      "hi": "पंजीकरण काउंटर 1"
+      "en": "Registration Counter",
+      "mr": "नोंदणी काउंटर",
+      "hi": "पंजीकरण काउंटर"
     },
     "opdWord": { "en": "OPD", "mr": "ओपीडी", "hi": "ओपीडी" }
   },
 
   "steps": {
     "en": [
-      "Go to {counter}. Carry any ID or an old hospital card.",
-      "Pay ₹{fee} and collect your case paper.",
-      "Go to {opd} and meet {doctor}.",
-      "Give your case paper and file to the doctor."
+      "Please proceed to {counter} No. 3 and stand in the queue to collect your case paper.",
+      "Show your hospital card or file at {counter} No. 3. Pay the registration fee {caseFee} in cash and collect your case paper.",
+      "Proceed to OPD {opd}, Room/Department No. 2, Building A.",
+      "Submit your hospital file to the OPD staff or attendant and wait for your token number to be called.",
+      "Meet Dr. Aditya Sharma when your number is called. Explain your symptoms and share any relevant medical history."
     ],
     "mr": [
-      "{counter} येथे जा. कोणतेही ओळखपत्र किंवा जुने हॉस्पिटल कार्ड सोबत घ्या.",
-      "₹{fee} भरा आणि तुमचा केस पेपर घ्या.",
-      "{opd} मध्ये जा आणि {doctor} यांना भेटा.",
-      "तुमचा केस पेपर आणि फाईल डॉक्टरांना द्या."
+      "कृपया {counter} क्रमांक ३ वर जा आणि केस पेपर घेण्यासाठी रांगेत उभे रहा.",
+      "काउंटर क्रमांक ३ वर तुमचे हॉस्पिटल कार्ड किंवा फाईल दाखवा. नोंदणीसाठी {caseFee} रोख भरा आणि तुमचा केस पेपर घ्या.",
+      "बिल्डिंग A मधील जनरल मेडिसिन OPD नंबर {opd} मध्ये जा.",
+      "तुमची हॉस्पिटल फाईल OPD मधील कर्मचारी किंवा कंपाउंडर यांच्याकडे जमा करा आणि तुमचा नंबर येईपर्यंत वाट पाहा.",
+      "तुमचा नंबर आल्यावर डॉ. आदित्य शर्मा यांना भेटा. तुम्हाला होत असलेल्या त्रासाबद्दल सांगा आणि तुमचा पूर्वीचा वैद्यकीय इतिहास असल्यास तोही सांगा."
     ],
     "hi": [
-      "{counter} पर जाइए। कोई भी पहचान पत्र या पुराना अस्पताल कार्ड साथ रखिए।",
-      "₹{fee} जमा करें और अपना केस पेपर लीजिए।",
-      "{opd} में जाइए और {doctor} से मिलिए।",
-      "अपना केस पेपर और फाइल डॉक्टर को दीजिए।"
+      "कृपया {counter} नंबर 3 पर जाएं और केस पेपर लेने के लिए कतार में खड़े हों।",
+      "काउंटर नंबर 3 पर अपना हॉस्पिटल कार्ड या फाइल दिखाएं। रजिस्ट्रेशन के लिए {caseFee} नकद जमा करें और अपना केस पेपर ले लें।",
+      "बिल्डिंग A में जनरल मेडिसिन OPD नंबर {opd} में जाएं।",
+      "अपनी हॉस्पिटल फाइल OPD के कर्मचारी या कंपाउंडर को जमा करें और अपने नंबर के आने तक इंतज़ार करें।",
+      "आपका नंबर आने पर डॉ. आदित्य शर्मा से मिलें। उन्हें अपनी तकलीफ के बारे में बताएं।"
     ]
   },
 
@@ -66,8 +69,9 @@
     "general_medicine": {
       "hint": "fever, cold, cough, body ache, stomach pain, vomiting, loose motions, weakness, BP, sugar, headache",
       "opd": 3,
+      "building":"A",
       "label": { "en": "General Medicine", "mr": "जनरल मेडिसिन", "hi": "जनरल मेडिसिन" },
-      "doctor": { "en": "Dr. Rutwik Patil", "mr": "डॉ. रुत्विक पाटील", "hi": "डॉ. रुत्विक पाटील" }
+      "doctor": { "en": "Dr. Aditya Sharma", "mr": "डॉ. आदित्य शर्मा", "hi": "डॉ. आदित्य शर्मा" }
     },
     "pediatrics": {
       "hint": "child or baby under 12 years with any problem",

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import Logo from "../Components/Logo";
 import MenuButton from "../Components/MenuButton";
+import Sidebar from "../Components/Sidebar";
 import LanguageSwitcher from "../Components/LanguageSwitcher";
 import VoiceButton from "../Components/VoiceButton";
 import ProcessingStatus from "../Components/ProcessingStatus";
@@ -51,6 +52,7 @@ export default function Home() {
   const [keyMissing, setKeyMissing] = useState(false); // backend has no Gemini API key
   const [mode, setMode] = useState("live"); // "live" | "demo" (demo only matters while keyMissing)
   const [noticeCollapsed, setNoticeCollapsed] = useState(false); // notice shrinks to an icon after "Analyse"
+  const [menuOpen, setMenuOpen] = useState(false);
   const { start, stop } = useRecorder();
   const scrollRef = useRef(null);
   const t = STRINGS[lang];
@@ -111,16 +113,14 @@ export default function Home() {
       setStep(2); // "Preparing your hospital map…"
       await sleep(MAP_PREP_MS);
 
-      const spokenSlip = `${data.slip.steps.join(" ")} ${data.disclaimer}`;
       addMessage({
         from: "guide",
         kind: "slip",
         slip: data.slip,
         disclaimer: data.disclaimer,
-        spokenSlip,
         lang: currentLang,
       });
-      speak(spokenSlip, currentLang, true);
+      // each step card is narrated by SlipCard as it appears
     } else {
       // "no_speech" or "unrelated": the backend sends the exact sentence to show
       guideText(data.message);
@@ -168,6 +168,16 @@ export default function Home() {
     }
   }
 
+  // "New" in the menu: clear the conversation and go back to the start screen
+  function handleNew() {
+    if (phase !== "idle") return;
+    stopSpeaking();
+    setMessages([]);
+    setEmergency(null);
+    setNoticeCollapsed(false); // brings the demo panel back in demo mode
+    setMenuOpen(false);
+  }
+
   function closeEmergency() {
     stopSpeaking();
     setEmergency(null);
@@ -202,7 +212,7 @@ export default function Home() {
     <main className="mx-auto flex h-dvh w-full max-w-md flex-col px-5 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       {/* Top bar */}
       <header className="flex h-11 shrink-0 items-center justify-between">
-        <MenuButton />
+        <MenuButton onClick={() => setMenuOpen(true)} label={t.menuOpen} />
         {keyMissing && noticeCollapsed && (
           <ApiKeyNotice collapsed onExpand={() => setNoticeCollapsed(false)} strings={t} />
         )}
@@ -253,7 +263,8 @@ export default function Home() {
                   slip={m.slip}
                   disclaimer={m.disclaimer}
                   speakLabel={STRINGS[m.lang].speakAgain}
-                  onSpeak={() => speak(m.spokenSlip, m.lang)}
+                  strings={STRINGS[m.lang]}
+                  lang={m.lang}
                 />
               );
             }
@@ -287,7 +298,8 @@ export default function Home() {
           disabled={phase !== "idle"}
         />
         {demoActive && phase === "idle" ? (
-          <DemoPanel strings={t} onAnalyse={handleDemoAnalyse} />
+          // After "Analyse" the panel stays hidden; tapping the amber icon (top right) brings it back
+          noticeCollapsed ? null : <DemoPanel strings={t} onAnalyse={handleDemoAnalyse} />
         ) : (
           <VoiceButton
             status={phase}
@@ -297,6 +309,14 @@ export default function Home() {
           />
         )}
       </section>
+
+      <Sidebar
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNew={handleNew}
+        newDisabled={phase !== "idle"}
+        strings={t}
+      />
 
       {emergency && (
         <EmergencyAlert message={emergency} backLabel={t.emergencyBack} onBack={closeEmergency} />
